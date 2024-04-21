@@ -8,11 +8,11 @@ import os
 def process_data(data):
 	print(data)
 	
-    
+
 def on_start():
       
 	try:
-		comPort = 'COM11' # edit port number accordingly	
+		comPort = 'COM12' # edit port number accordingly	
 		ser = serial.Serial(port=comPort, baudrate=115200)
 		print('Receiving data.... Press CTRL+C to exit \nData: ')		
 		while True:			
