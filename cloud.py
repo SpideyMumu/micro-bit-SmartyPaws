@@ -30,7 +30,7 @@ conn = engine.connect()
 all_data = conn.execute(text("SELECT * FROM smart_pet_collar_data"))    
 
 class PetDataInput(BaseModel):
-    collarName: str
+    collar_name: str
     steps: int
     heart_rate: int
     temp: float
@@ -47,7 +47,7 @@ def read_root():
 # Get Data by Device Name
 @app.get("/device/{device_name}")
 def get_device_data(device_name: str):
-    result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collarName = :device_name"), {"device_name": device_name})
+    result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collar_name = :device_name"), {"device_name": device_name})
     data = []
     for row in result:
         data.append(str(row))
@@ -56,7 +56,7 @@ def get_device_data(device_name: str):
 # Get Data by Device Name and latest entry
 @app.get("/device/{device_name}/latest")
 def get_device_latest_data(device_name: str):
-    result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collarName = :device_name AND timestamp = (SELECT MAX(timestamp) FROM smart_pet_collar_data WHERE collarName = :device_name)"), {"device_name": device_name})
+    result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collar_name = :device_name AND timestamp = (SELECT MAX(timestamp) FROM smart_pet_collar_data WHERE collar_name = :device_name)"), {"device_name": device_name})
     data = []
     for row in result:
         data.append(str(row))
@@ -66,7 +66,7 @@ def get_device_latest_data(device_name: str):
 # data stream latest entry every 5 seconds
 async def generate_data_stream(device_name: str):
     while True:
-        result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collarName = :device_name AND timestamp = (SELECT MAX(timestamp) FROM smart_pet_collar_data WHERE collarName = :device_name)"),{"device_name": device_name})
+        result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collar_name = :device_name AND timestamp = (SELECT MAX(timestamp) FROM smart_pet_collar_data WHERE collar_name = :device_name)"),{"device_name": device_name})
         data = []
         for row in result:
             data.append(str(row))
@@ -83,11 +83,11 @@ async def stream_data(device_name: str):
 def put_pet_data(pet_data: PetDataInput):
     with engine.connect() as conn:
         insert_query = text("""
-            INSERT INTO smart_pet_collar_data (collarName, steps, heart_rate, temp, timestamp)
-            VALUES (:collarName, :steps, :heart_rate, :temp, :timestamp)
+            INSERT INTO smart_pet_collar_data (collar_name, steps, heart_rate, temp, timestamp)
+            VALUES (:collar_name, :steps, :heart_rate, :temp, :timestamp)
         """)
         conn.execute(insert_query, {
-            'collarName': pet_data.collarName,
+            'collar_name': pet_data.collar_name,
             'steps': pet_data.steps,
             'heart_rate': pet_data.heart_rate,
             'temp': pet_data.temp,
