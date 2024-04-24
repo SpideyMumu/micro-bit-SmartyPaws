@@ -16,7 +16,11 @@ app = FastAPI()
 activity_state = "normal"
 state_change_time = time.time()  # Track when the last state change occurred
 
-SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/smartypaws"
+# Local Database
+#SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/smartypaws"
+
+# Docker Database
+SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@roundhouse.proxy.rlwy.net:32915/smartypaws"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
