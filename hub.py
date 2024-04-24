@@ -78,7 +78,7 @@ try:
 	for address,name in devices.items():
 
 		if address == 'CA:47:7D:AF:80:C4':
-			print('Found BBC micro:bit []: {}'.format(address))
+			print('Found BBC micro:bit [vegav]: {}'.format(address))
 			addBleUartDevice(address, 'vegav')
 			
 			print('Added micro:bit device...')
@@ -114,6 +114,9 @@ try:
 			sendCommandToAllBleUartDevices('sensor=temp')
 			print('Finished sending command to all micro:bit devices...')
 			saveData()
+	
+    # For simulation: use serial to receive data from micro:bit
+	
 
 
 except KeyboardInterrupt:

@@ -9,6 +9,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
 
+from pydantic import BaseModel
+
 app = FastAPI()
 
 activity_state = "normal"
@@ -23,6 +25,13 @@ conn = engine.connect()
 
 # Execute a SQL command
 all_data = conn.execute(text("SELECT * FROM smart_pet_collar_data"))    
+
+class PetDataInput(BaseModel):
+    collarName: str
+    steps: int
+    heart_rate: int
+    temp: float
+    timestamp: datetime
     
 # Get All Data
 @app.get("/")
@@ -41,15 +50,6 @@ def get_device_data(device_name: str):
         data.append(str(row))
     return {"Device": device_name, "Data": data}
 
-# Get Data by Device Name and Date
-# @app.get("/device/{device_name}/{date}")
-# def get_device_data_by_date(device_name: str, date: str):
-#     result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collarName = :device_name AND DATE(timestamp) = :date"), {"device_name": device_name, "date": date})
-#     data = []
-#     for row in result:
-#         data.append(str(row))
-#     return {"Device": device_name, "Data": data}
-
 # Get Data by Device Name and latest entry
 @app.get("/device/{device_name}/latest")
 def get_device_latest_data(device_name: str):
@@ -60,16 +60,34 @@ def get_device_latest_data(device_name: str):
     return {"Device": device_name, "Latest Data": data}
 
 
+# data stream latest entry every 5 seconds
 async def generate_data_stream(device_name: str):
     while True:
         result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collarName = :device_name AND timestamp = (SELECT MAX(timestamp) FROM smart_pet_collar_data WHERE collarName = :device_name)"),{"device_name": device_name})
         data = []
         for row in result:
             data.append(str(row))
-        print(data)
+        #print(data)
         yield f"data: {data}\n".encode()
         time.sleep(5)  # Adjust this value to control the update frequency
 
 @app.get("/data/stream/{device_name}")
 async def stream_data(device_name: str):
     return StreamingResponse(generate_data_stream(device_name), media_type="text/event-stream")
+
+# put new data
+@app.put("/pet_data")
+def put_pet_data(pet_data: PetDataInput):
+    with engine.connect() as conn:
+        insert_query = text("""
+            INSERT INTO smart_pet_collar_data (collarName, steps, heart_rate, temp, timestamp)
+            VALUES (:collarName, :steps, :heart_rate, :temp, :timestamp)
+        """)
+        conn.execute(insert_query, {
+            'collarName': pet_data.collarName,
+            'steps': pet_data.steps,
+            'heart_rate': pet_data.heart_rate,
+            'temp': pet_data.temp,
+            'timestamp': pet_data.timestamp
+        })
+    return {"message": "Data inserted successfully"}
