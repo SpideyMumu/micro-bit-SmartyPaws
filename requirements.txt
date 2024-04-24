@@ -3,4 +3,5 @@ datetime
 fastapi
 uvicorn
 sqlalchemy
+mysql
 pydantic
