@@ -1,6 +1,5 @@
 import time
 import numpy as np
-import random
 from datetime import datetime
 from fastapi import FastAPI, Response
 from fastapi.responses import StreamingResponse
