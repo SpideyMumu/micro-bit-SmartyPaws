@@ -4,4 +4,7 @@ fastapi
 uvicorn
 sqlalchemy
 mysql
+mysql-connector-python
+sqlalchemy.orm
+sqlalchemy.sql
 pydantic
