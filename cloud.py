@@ -30,6 +30,7 @@ conn = engine.connect()
 all_data = conn.execute(text("SELECT * FROM smart_pet_collar_data"))    
 
 class PetDataInput(BaseModel):
+    id: int
     collar_name: str
     steps: int
     heart_rate: int
@@ -83,10 +84,11 @@ async def stream_data(device_name: str):
 def put_pet_data(pet_data: PetDataInput):
     with engine.connect() as conn:
         insert_query = text("""
-            INSERT INTO smart_pet_collar_data (collar_name, steps, heart_rate, temp, timestamp)
-            VALUES (:collar_name, :steps, :heart_rate, :temp, :timestamp)
+            INSERT INTO smart_pet_collar_data (id, collar_name, steps, heart_rate, temp, timestamp)
+            VALUES (:id, :collar_name, :steps, :heart_rate, :temp, :timestamp)
         """)
         conn.execute(insert_query, {
+            'id': pet_data.id,
             'collar_name': pet_data.collar_name,
             'steps': pet_data.steps,
             'heart_rate': pet_data.heart_rate,
