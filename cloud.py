@@ -30,7 +30,6 @@ conn = engine.connect()
 all_data = conn.execute(text("SELECT * FROM smart_pet_collar_data"))    
 
 class PetDataInput(BaseModel):
-    id: int
     collar_name: str
     steps: int
     heart_rate: int
