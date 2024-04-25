@@ -1,24 +1,25 @@
-let temperature = 0;
-let accX = 0;
-let accY = 0;
-let accZ = 0;
 let temp = 0;
 let steps = 0;
 
+let heartRate = 0;
+let count = 0;
+let doCounting = false;
+let startTime = 0;
+let currentTime = 0;
+
+let simMode = false;
 let isReady = false;
+
 bluetooth.setTransmitPower(7)
 bluetooth.startUartService()
 let connected = false
+
 let command = ""
 let commandValue = ""
 let commandKey = ""
 let buffer = []
 
-
-let _4digit = grove.createDisplay(DigitalPin.P2, DigitalPin.P16)
-_4digit.set(7)
-
-//we should store the data and then send it via bluetooth every minute
+//we should store the data and then send it via bluetooth every half a minute
 //this is to decrease power usage and maintain efficient usage.
 
 // On gesture shake is too insensitive
@@ -36,6 +37,7 @@ bluetooth.onBluetoothDisconnected(function () {
     basic.showIcon(IconNames.No)
 })
 
+// Press button A once sensor is attached/worn
 input.onButtonPressed(Button.A, function () {
     isReady = true
     basic.clearScreen()
@@ -45,11 +47,47 @@ input.onButtonPressed(Button.B, function () {
     basic.showNumber(steps)
 })
 
+input.onButtonPresed(Button.AB, function () {
+    //adjust sim mode
+    simMode = !simMode
+})
+
+// rising edge detection
+control.onEvent(EventBusSource.MICROBIT_ID_IO_P0, EventBusValue.MICROBIT_PIN_EVT_RISE, function () {
+    handleHeartRate();
+});
+
+function handleHeartRate() {
+    count++;
+
+    if (!doCounting) {
+        if (count === 10) {
+            basic.showIcon(IconNames.Heart);
+            startTime = input.runningTime();
+            count = 0;
+            doCounting = true;
+        }
+    }
+
+    if (doCounting) {
+        currentTime = input.runningTime();
+        if (currentTime - startTime > 15000) {
+            if (count > 0) {
+                heartRate = count * 4;
+            }
+            startTime = input.runningTime();
+            count = 0;
+        }
+    }
+}
+
 control.inBackground(() => {
+    // before setting up the sensor, we need to wait for the sensor to be attached
     while (!isReady || !connected) {
         basic.showIcon(IconNames.Sad)
     }
 
+    // once the sensor is attached, we can start counting steps
     while (isReady || connected) {
         // NOTE: step counter is slow to display once it is double digits
         // basic.showNumber(steps)
@@ -58,8 +96,16 @@ control.inBackground(() => {
             steps++;
         }
     }
+
+    // send data via serial for simulation purposes
+    while(simMode) {
+        temp = input.temperature()
+        let dataToSend = 'temp: ${temp}, steps: ${steps}, heart_rate: ${heartRate}';
+        serial.writeLine(dataToSend)
+    }
 })
 
+// send data vie BLE
 bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
     basic.showString("R")
 
@@ -73,18 +119,10 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () 
         if (commandValue == "temp") {
             bluetooth.uartWriteString("" + 
             control.deviceName() + 
+            "=steps=" + steps +
             "=temp=" + input.temperature() +
-            "=steps=" + steps)
+            "=heart_rate=" + heartRate)
             basic.showString("T")
         }
     }
 })
-
-function calculateXYZ() {
-    accX = input.acceleration(Dimension.X)
-    accY = input.acceleration(Dimension.Y)
-    accZ = input.acceleration(Dimension.Z)
-
-    temp = input.temperature()
-    let dataToSend = 'Temp: ${temperature}, AccX: ${accX}, AccY: ${accY}, AccZ: ${accZ}';
-}

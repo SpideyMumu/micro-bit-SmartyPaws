@@ -49,3 +49,45 @@ control.onEvent(EventBusSource.MICROBIT_ID_IO_P0, EventBusValue.MICROBIT_PIN_EVT
         basic.showIcon(IconNames.No)
     }
 })
+
+// claude code + src06 frm lecture6
+let count = 0;
+let doCounting = false;
+let startTime = 0;
+let currentTime = 0;
+
+//on start
+basic.showIcon(IconNames.Happy)
+basic.pause(1000)
+basic.clearScreen()
+
+pins.setEvents(DigitalPin.P0, PinEventType.Edge);
+
+control.onEvent(EventBusSource.MICROBIT_ID_IO_P0, EventBusValue.MICROBIT_PIN_EVT_RISE, function () {
+    handleHeartRate();
+});
+
+function handleHeartRate() {
+    count++;
+
+    if (!doCounting) {
+        if (count === 10) {
+            basic.showIcon(IconNames.Heart);
+            startTime = input.runningTime();
+            count = 0;
+            doCounting = true;
+        }
+    }
+
+    if (doCounting) {
+        currentTime = input.runningTime();
+        if (currentTime - startTime > 15000) {
+            if (count > 0) {
+                const heartRate = count * 4;
+                basic.showNumber(heartRate);
+            }
+            startTime = input.runningTime();
+            count = 0;
+        }
+    }
+}
