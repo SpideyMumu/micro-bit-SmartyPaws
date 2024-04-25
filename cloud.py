@@ -93,4 +93,5 @@ def put_pet_data(pet_data: PetDataInput):
             'temp': pet_data.temp,
             'timestamp': pet_data.timestamp
         })
+        conn.commit()
     return {"message": "Data inserted successfully"}
