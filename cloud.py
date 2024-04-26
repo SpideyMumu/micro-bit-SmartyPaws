@@ -62,6 +62,14 @@ def get_device_latest_data(device_name: str):
         data.append(str(row))
     return {"Device": device_name, "Latest Data": data}
 
+@app.get("/devices")
+def get_devices():
+    result = conn.execute(text("SELECT DISTINCT collar_name FROM smart_pet_collar_data"))
+    devices = []
+    for row in result:
+        devices.append(row[0])
+    return {"Devices": devices}
+
 
 # data stream latest entry every 5 seconds
 async def generate_data_stream(device_name: str):
@@ -86,12 +94,16 @@ def put_pet_data(pet_data: PetDataInput):
             INSERT INTO smart_pet_collar_data (collar_name, steps, heart_rate, temp, timestamp)
             VALUES (:collar_name, :steps, :heart_rate, :temp, :timestamp)
         """)
-        conn.execute(insert_query, {
-            'collar_name': pet_data.collar_name,
-            'steps': pet_data.steps,
-            'heart_rate': pet_data.heart_rate,
-            'temp': pet_data.temp,
-            'timestamp': pet_data.timestamp
-        })
-        conn.commit()
+        try:
+            conn.execute(insert_query, {
+                'collar_name': pet_data.collar_name,
+                'steps': pet_data.steps,
+                'heart_rate': pet_data.heart_rate,
+                'temp': pet_data.temp,
+                'timestamp': pet_data.timestamp
+            })
+            conn.commit()
+        except:
+            conn.rollback()
+            raise
     return {"message": "Data inserted successfully"}
