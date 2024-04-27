@@ -15,6 +15,7 @@ activity_state = "normal"
 state_change_time = time.time()  # Track when the last state change occurred
 
 SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/smartypaws"
+PATH_TO_TRAINING_DATA = r"C:\Users\TYC\Documents\FreshMemes\Year4\Semester2\IS4151\Project\micro-bit-SmartyPaws\combined_dog_data.csv"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
@@ -82,7 +83,7 @@ async def get_predictions_logistic_regression(collarName: str):
 #    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
 #    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
     #extract relevant features
-    model = train_logistic_regression_model(read_training_data("")) #insert path here
+    model = train_logistic_regression_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
     features = df[['temp', 'hbr']]
     df['predicted_health'] = model.predict(features)
     df['predicted_health_probability'] = model.predict_proba(features)[:, 1]
@@ -101,8 +102,8 @@ async def get_predictions_random_forest(collarName: str):
 #    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
 #    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
     #extract relevant features
-    model = train_random_forest_model(read_training_data("")) #insert path here
-    features = df[['temp', 'hbr']]
+    model = train_random_forest_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
+    features = df[['temp', 'hbr', 'steps']]
     df['predicted_health'] = model.predict(features)
     df['predicted_health_probability'] = model.predict_proba(features)[:, 1]
 
@@ -120,8 +121,8 @@ async def get_predictions_random_forest(collarName: str):
 #    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
 #    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
     #extract relevant features
-    model = train_decision_tree_model(read_training_data("")) #insert path here
-    features = df[['temp', 'hbr']]
+    model = train_decision_tree_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
+    features = df[['temp', 'hbr', 'steps']]
     df['predicted_health'] = model.predict(features)
     df['predicted_health_probability'] = model.predict_proba(features)[:, 1]
 
@@ -147,14 +148,14 @@ sns.set(style="whitegrid", color_codes=True)
 
 
 def read_training_data(path: str):
-#    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
-#    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
-    training_data = pd.read_csv(path, header=0) #assume data is in csv file with column names
+    column_names = ['temp', 'hbr', 'steps', 'health_status'] #assume data columns are ordered like this
+    training_data = pd.read_csv(path, header=None, names=column_names) #for when the data has no columns
+#    training_data = pd.read_csv(path, header=0) #assume data is in csv file with column names
     training_data = training_data.dropna()
     print(training_data.shape)
     print(list(training_data.columns))
 
-    return data
+    return training_data
 
 # only recent data is important for guessing whether the pet is sick
 def get_data_last_2_days_for_collar_name(collarName: str):
@@ -165,7 +166,7 @@ def get_data_last_2_days_for_collar_name(collarName: str):
     """
 
     df = pd.read_sql_query(query, engine, params={'collarName': collarName, 'two_days_ago': two_days_ago})
-    new_column_names = ['collarName', 'temp', 'hbr', 'timestamp']
+    new_column_names = ['collarName', 'temp', 'hbr', 'steps', 'timestamp']
     df.columns = new_column_names #just in case; i dont know what the actual column names in the db are
     
     return df
@@ -174,7 +175,7 @@ def train_logistic_regression_model(df):
     # Assuming 'df' is your DataFrame and has been preprocessed correctly
     
     # Separate the features and the target variable
-    X = df[['temp', 'hbr']]  # include only relevant columns
+    X = df[['temp', 'hbr', 'steps']]  # include only relevant columns
     y = df['health_status']
     
     # split the data into training and test sets (80% train, 20% test)
@@ -204,7 +205,7 @@ from sklearn.metrics import accuracy_score, classification_report
 
 def train_random_forest_model(df):
     # Features and Labels
-    X = df[['temp', 'hbr']]  # assuming these are the features
+    X = df[['temp', 'hbr', 'steps']]  # assuming these are the features
     y = df['health_status']
 
     # Splitting the dataset into train and test sets
@@ -233,7 +234,7 @@ from sklearn.metrics import accuracy_score, classification_report
 
 def train_decision_tree_model(df):
     # Extract features and labels
-    X = df[['temp', 'hbr']]
+    X = df[['temp', 'hbr', 'steps']]
     y = df['health_status']
 
     # Split data into training and testing sets
