@@ -1,6 +1,7 @@
 import time
 import numpy as np
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Response
 from fastapi.responses import StreamingResponse
 
@@ -15,11 +16,14 @@ app = FastAPI()
 activity_state = "normal"
 state_change_time = time.time()  # Track when the last state change occurred
 
+PATH_TO_TRAINING_DATA = r"combined_dog_data.csv"
+
 # Local Database
 #SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/smartypaws"
 
 # Docker Database
 SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@roundhouse.proxy.rlwy.net:32915/smartypaws"
+
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
@@ -86,6 +90,189 @@ async def generate_data_stream(device_name: str):
 async def stream_data(device_name: str):
     return StreamingResponse(generate_data_stream(device_name), media_type="text/event-stream")
 
+
+# yao ci's ML model, for convenience
+@app.get("/ml/log_regression/{collarName}")
+async def get_predictions_logistic_regression(collarName: str):
+    df = get_data_last_2_days_for_collar_name(collarName)
+#    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
+#    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
+    #extract relevant features
+    model = train_logistic_regression_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
+    features = df[['temp', 'hbr']]
+    df['predicted_health'] = model.predict(features)
+    df['predicted_health_probability'] = model.predict_proba(features)[:, 1]
+
+    prediction_counts = df['predicted_health'].value_counts()
+    status = 'healthy'
+    if prediction_counts.get(1, 0) > prediction_counts.get(0 ,0): #extremely crude measurement
+        status = 'sick'
+    
+    return status
+
+#random forest
+@app.get("ml/random_forest/{collarName}")
+async def get_predictions_random_forest(collarName: str):
+    df = get_data_last_2_days_for_collar_name(collarName)
+#    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
+#    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
+    #extract relevant features
+    model = train_random_forest_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
+    features = df[['temp', 'hbr', 'steps']]
+    df['predicted_health'] = model.predict(features)
+    df['predicted_health_probability'] = model.predict_proba(features)[:, 1]
+
+    prediction_counts = df['predicted_health'].value_counts()
+    status = 'healthy'
+    if prediction_counts.get(1, 0) > prediction_counts.get(0 ,0): #extremely crude measurement
+        status = 'sick'
+    
+    return status
+
+#decision tree
+@app.get("ml/decision_tree/{collarName}")
+async def get_predictions_random_forest(collarName: str):
+    df = get_data_last_2_days_for_collar_name(collarName)
+#    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
+#    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
+    #extract relevant features
+    model = train_decision_tree_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
+    features = df[['temp', 'hbr', 'steps']]
+    df['predicted_health'] = model.predict(features)
+    df['predicted_health_probability'] = model.predict_proba(features)[:, 1]
+
+    prediction_counts = df['predicted_health'].value_counts()
+    status = 'healthy'
+    if prediction_counts.get(1, 0) > prediction_counts.get(0 ,0): #extremely crude measurement
+        status = 'sick'
+    
+    return status
+
+
+import pandas as pd
+import numpy as np
+from sklearn import preprocessing
+import matplotlib.pyplot as plt 
+plt.rc("font", size=14)
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
+import seaborn as sns
+sns.set(style="white")
+sns.set(style="whitegrid", color_codes=True)
+
+
+def read_training_data(path: str):
+    column_names = ['temp', 'hbr', 'steps', 'health_status'] #assume data columns are ordered like this
+    training_data = pd.read_csv(path, header=None, names=column_names) #for when the data has no columns
+#    training_data = pd.read_csv(path, header=0) #assume data is in csv file with column names
+    training_data = training_data.dropna()
+    print(training_data.shape)
+    print(list(training_data.columns))
+
+    return training_data
+
+# only recent data is important for guessing whether the pet is sick
+def get_data_last_2_days_for_collar_name(collarName: str):
+    two_days_ago = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')
+    query = f"""
+    SELECT * FROM pet_data
+    WHERE collarName = {collarName} AND timestamp >= '{two_days_ago}'
+    """
+
+    df = pd.read_sql_query(query, engine, params={'collarName': collarName, 'two_days_ago': two_days_ago})
+    new_column_names = ['collarName', 'temp', 'hbr', 'steps', 'timestamp']
+    df.columns = new_column_names #just in case; i dont know what the actual column names in the db are
+    
+    return df
+
+def train_logistic_regression_model(df):
+    # Assuming 'df' is your DataFrame and has been preprocessed correctly
+    
+    # Separate the features and the target variable
+    X = df[['temp', 'hbr', 'steps']]  # include only relevant columns
+    y = df['health_status']
+    
+    # split the data into training and test sets (80% train, 20% test)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Create a logistic regression model
+    model = LogisticRegression()
+    
+    # Train the model
+    model.fit(X_train, y_train)
+    
+    # Make predictions on the test set
+    predictions = model.predict(X_test)
+    
+    # Evaluate the model
+    accuracy = accuracy_score(y_test, predictions)
+    report = classification_report(y_test, predictions)
+    
+    print("Accuracy of the model: ", accuracy)
+    print("Classification Report:\n", report)
+    
+    return model    
+
+#random forest
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+def train_random_forest_model(df):
+    # Features and Labels
+    X = df[['temp', 'hbr', 'steps']]  # assuming these are the features
+    y = df['health_status']
+
+    # Splitting the dataset into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Initialize the rf classifier
+    model = RandomForestClassifier(n_estimators=100, random_state=42)  # tune these params
+
+    # Train the model
+    model.fit(X_train, y_train)
+
+    # Predict on the test set
+    y_pred = model.predict(X_test)
+
+    # Evaluate the model
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred)
+
+    print("Accuracy:", accuracy)
+    print("Classification Report:\n", report)
+
+    return model
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+def train_decision_tree_model(df):
+    # Extract features and labels
+    X = df[['temp', 'hbr', 'steps']]
+    y = df['health_status']
+
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Initialize the decision tree classifier
+    tree_model = DecisionTreeClassifier(random_state=42)  # Default settings
+
+    # Train the model
+    tree_model.fit(X_train, y_train)
+
+    # Make predictions on the test set
+    y_pred = tree_model.predict(X_test)
+
+    # Evaluate the model
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred)
+
+    print("Accuracy:", accuracy)
+    print("Classification Report:\n", report)
+
+    return tree_model
+  
 # put new data
 @app.put("/pet_data")
 def put_pet_data(pet_data: PetDataInput):
