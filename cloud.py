@@ -171,7 +171,8 @@ async def get_predictions_random_forest(collarName: str):
 def read_training_data(path: str):
     column_names = ['temp', 'hbr', 'steps', 'health_status'] #assume data columns are ordered like this
     training_data = pd.read_csv(path, header=None, names=column_names) #for when the data has no columns
-#    training_data = pd.read_csv(path, header=0) #assume data is in csv file with column names
+    training_data = pd.read_csv(path, header=0) #assume data is in csv file with column names
+    training_data.columns = column_names
     training_data = training_data.dropna()
     print(training_data.shape)
     print(list(training_data.columns))
