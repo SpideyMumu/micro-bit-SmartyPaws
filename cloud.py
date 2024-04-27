@@ -38,6 +38,7 @@ state_change_time = time.time()  # Track when the last state change occurred
 
 PATH_TO_TRAINING_DATA = r"combined_dog_data.csv"
 
+
 # Local Database
 #SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/smartypaws"
 
@@ -118,10 +119,9 @@ async def get_predictions_logistic_regression(collarName: str):
 #    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
 #    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
     #extract relevant features
-    model = train_logistic_regression_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
-    features = df[['temp', 'hbr']]
-    df['predicted_health'] = model.predict(features)
-    df['predicted_health_probability'] = model.predict_proba(features)[:, 1]
+    features = df[['temp', 'hbr', 'steps']]
+    df['predicted_health'] = logistic_regression_model.predict(features)
+    df['predicted_health_probability'] = logistic_regression_model.predict_proba(features)[:, 1]
 
     prediction_counts = df['predicted_health'].value_counts()
     status = 'healthy'
@@ -137,10 +137,10 @@ async def get_predictions_random_forest(collarName: str):
 #    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
 #    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
     #extract relevant features
-    model = train_random_forest_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
+#    model = train_random_forest_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
     features = df[['temp', 'hbr', 'steps']]
-    df['predicted_health'] = model.predict(features)
-    df['predicted_health_probability'] = model.predict_proba(features)[:, 1]
+    df['predicted_health'] = random_forest_model.predict(features)
+    df['predicted_health_probability'] = random_forest_model.predict_proba(features)[:, 1]
 
     prediction_counts = df['predicted_health'].value_counts()
     status = 'healthy'
@@ -156,10 +156,10 @@ async def get_predictions_random_forest(collarName: str):
 #    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
 #    training_data = pd.read_csv(path, header=None, names=column_names) for when the data has no columns
     #extract relevant features
-    model = train_decision_tree_model(read_training_data(PATH_TO_TRAINING_DATA)) #insert path here
+     #insert path here
     features = df[['temp', 'hbr', 'steps']]
-    df['predicted_health'] = model.predict(features)
-    df['predicted_health_probability'] = model.predict_proba(features)[:, 1]
+    df['predicted_health'] = decision_tree_model.predict(features)
+    df['predicted_health_probability'] = decision_tree_model.predict_proba(features)[:, 1]
 
     prediction_counts = df['predicted_health'].value_counts()
     status = 'healthy'
@@ -296,3 +296,7 @@ def put_pet_data(pet_data: PetDataInput):
             conn.rollback()
             raise
     return {"message": "Data inserted successfully"}
+
+decision_tree_model = train_decision_tree_model(read_training_data(PATH_TO_TRAINING_DATA))
+random_forest_model = train_random_forest_model(read_training_data(PATH_TO_TRAINING_DATA))
+logistic_regression_model = train_logistic_regression_model(read_training_data(PATH_TO_TRAINING_DATA))
