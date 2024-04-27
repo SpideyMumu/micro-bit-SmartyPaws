@@ -9,4 +9,3 @@ pydantic
 pandas
 matplotlib
 scikit-learn
-seaborn

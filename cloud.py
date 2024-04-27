@@ -19,9 +19,9 @@ plt.rc("font", size=14)
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
-import seaborn as sns
-sns.set(style="white")
-sns.set(style="whitegrid", color_codes=True)
+# import seaborn as sns
+# sns.set(style="white")
+# sns.set(style="whitegrid", color_codes=True)
 
 # Random forest
 from sklearn.ensemble import RandomForestClassifier
@@ -182,13 +182,10 @@ def read_training_data(path: str):
 # only recent data is important for guessing whether the pet is sick
 def get_data_last_2_days_for_collar_name(collarName: str):
     two_days_ago = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')
-    query = f"""
-    SELECT * FROM smart_pet_collar_data
-    WHERE collar_name = {collarName} AND timestamp >= '{two_days_ago}'
-    """
+    query = text("SELECT * FROM smart_pet_collar_data WHERE collar_name = :collarName AND timestamp >= :two_days_ago")
 
-    df = pd.read_sql_query(query, engine, params={'collarName': collarName, 'two_days_ago': two_days_ago})
-    new_column_names = ['collarName', 'temp', 'hbr', 'steps', 'timestamp']
+    df = pd.read_sql_query(query, conn, params={'collarName': collarName, 'two_days_ago': two_days_ago})
+    new_column_names = ['id','collarName','steps', 'hbr', 'temp', 'timestamp']
     df.columns = new_column_names #just in case; i dont know what the actual column names in the db are
     
     return df
