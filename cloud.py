@@ -11,6 +11,26 @@ from sqlalchemy.sql import text
 
 from pydantic import BaseModel
 
+# ML
+import pandas as pd
+from sklearn import preprocessing
+import matplotlib.pyplot as plt 
+plt.rc("font", size=14)
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
+import seaborn as sns
+sns.set(style="white")
+sns.set(style="whitegrid", color_codes=True)
+
+# Random forest
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+# Decision Tree
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
 app = FastAPI()
 
 activity_state = "normal"
@@ -148,20 +168,6 @@ async def get_predictions_random_forest(collarName: str):
     
     return status
 
-
-import pandas as pd
-import numpy as np
-from sklearn import preprocessing
-import matplotlib.pyplot as plt 
-plt.rc("font", size=14)
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
-import seaborn as sns
-sns.set(style="white")
-sns.set(style="whitegrid", color_codes=True)
-
-
 def read_training_data(path: str):
     column_names = ['temp', 'hbr', 'steps', 'health_status'] #assume data columns are ordered like this
     training_data = pd.read_csv(path, header=None, names=column_names) #for when the data has no columns
@@ -214,9 +220,7 @@ def train_logistic_regression_model(df):
     
     return model    
 
-#random forest
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
+
 
 def train_random_forest_model(df):
     # Features and Labels
@@ -244,8 +248,6 @@ def train_random_forest_model(df):
 
     return model
 
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, classification_report
 
 def train_decision_tree_model(df):
     # Extract features and labels
