@@ -9,13 +9,21 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
 
+from pydantic import BaseModel
+
 app = FastAPI()
 
 activity_state = "normal"
 state_change_time = time.time()  # Track when the last state change occurred
 
-SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/smartypaws"
-PATH_TO_TRAINING_DATA = r"C:\Users\TYC\Documents\FreshMemes\Year4\Semester2\IS4151\Project\micro-bit-SmartyPaws\combined_dog_data.csv"
+PATH_TO_TRAINING_DATA = r"combined_dog_data.csv"
+
+# Local Database
+#SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@localhost:3306/smartypaws"
+
+# Docker Database
+SQLALCHEMY_DATABASE_URL = "mysql+mysqlconnector://root:password@roundhouse.proxy.rlwy.net:32915/smartypaws"
+
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
@@ -24,6 +32,13 @@ conn = engine.connect()
 
 # Execute a SQL command
 all_data = conn.execute(text("SELECT * FROM smart_pet_collar_data"))    
+
+class PetDataInput(BaseModel):
+    collar_name: str
+    steps: int
+    heart_rate: int
+    temp: float
+    timestamp: datetime
     
 # Get All Data
 @app.get("/")
@@ -36,38 +51,38 @@ def read_root():
 # Get Data by Device Name
 @app.get("/device/{device_name}")
 def get_device_data(device_name: str):
-    result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collarName = :device_name"), {"device_name": device_name})
+    result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collar_name = :device_name"), {"device_name": device_name})
     data = []
     for row in result:
         data.append(str(row))
     return {"Device": device_name, "Data": data}
 
-# Get Data by Device Name and Date
-# @app.get("/device/{device_name}/{date}")
-# def get_device_data_by_date(device_name: str, date: str):
-#     result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collarName = :device_name AND DATE(timestamp) = :date"), {"device_name": device_name, "date": date})
-#     data = []
-#     for row in result:
-#         data.append(str(row))
-#     return {"Device": device_name, "Data": data}
-
 # Get Data by Device Name and latest entry
 @app.get("/device/{device_name}/latest")
 def get_device_latest_data(device_name: str):
-    result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collarName = :device_name AND timestamp = (SELECT MAX(timestamp) FROM smart_pet_collar_data WHERE collarName = :device_name)"), {"device_name": device_name})
+    result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collar_name = :device_name AND timestamp = (SELECT MAX(timestamp) FROM smart_pet_collar_data WHERE collar_name = :device_name)"), {"device_name": device_name})
     data = []
     for row in result:
         data.append(str(row))
     return {"Device": device_name, "Latest Data": data}
 
+@app.get("/devices")
+def get_devices():
+    result = conn.execute(text("SELECT DISTINCT collar_name FROM smart_pet_collar_data"))
+    devices = []
+    for row in result:
+        devices.append(row[0])
+    return {"Devices": devices}
 
+
+# data stream latest entry every 5 seconds
 async def generate_data_stream(device_name: str):
     while True:
-        result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collarName = :device_name AND timestamp = (SELECT MAX(timestamp) FROM smart_pet_collar_data WHERE collarName = :device_name)"),{"device_name": device_name})
+        result = conn.execute(text("SELECT * FROM smart_pet_collar_data WHERE collar_name = :device_name AND timestamp = (SELECT MAX(timestamp) FROM smart_pet_collar_data WHERE collar_name = :device_name)"),{"device_name": device_name})
         data = []
         for row in result:
             data.append(str(row))
-        print(data)
+        #print(data)
         yield f"data: {data}\n".encode()
         time.sleep(5)  # Adjust this value to control the update frequency
 
@@ -257,3 +272,25 @@ def train_decision_tree_model(df):
     print("Classification Report:\n", report)
 
     return tree_model
+  
+# put new data
+@app.put("/pet_data")
+def put_pet_data(pet_data: PetDataInput):
+    with engine.connect() as conn:
+        insert_query = text("""
+            INSERT INTO smart_pet_collar_data (collar_name, steps, heart_rate, temp, timestamp)
+            VALUES (:collar_name, :steps, :heart_rate, :temp, :timestamp)
+        """)
+        try:
+            conn.execute(insert_query, {
+                'collar_name': pet_data.collar_name,
+                'steps': pet_data.steps,
+                'heart_rate': pet_data.heart_rate,
+                'temp': pet_data.temp,
+                'timestamp': pet_data.timestamp
+            })
+            conn.commit()
+        except:
+            conn.rollback()
+            raise
+    return {"message": "Data inserted successfully"}

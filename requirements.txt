@@ -1,0 +1,8 @@
+numpy
+datetime
+fastapi
+uvicorn
+sqlalchemy
+mysql
+mysql-connector-python
+pydantic
