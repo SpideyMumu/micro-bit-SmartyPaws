@@ -183,7 +183,7 @@ def get_data_last_2_days_for_collar_name(collarName: str):
     two_days_ago = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')
     query = f"""
     SELECT * FROM smart_pet_collar_data
-    WHERE collarName = {collarName} AND timestamp >= '{two_days_ago}'
+    WHERE collar_name = {collarName} AND timestamp >= '{two_days_ago}'
     """
 
     df = pd.read_sql_query(query, engine, params={'collarName': collarName, 'two_days_ago': two_days_ago})
