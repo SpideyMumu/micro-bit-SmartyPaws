@@ -8,5 +8,5 @@ mysql-connector-python
 pydantic
 pandas
 matplotlib
-sklearn
+scikit-learn
 seaborn
