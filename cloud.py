@@ -131,7 +131,7 @@ async def get_predictions_logistic_regression(collarName: str):
     return status
 
 #random forest
-@app.get("ml/random_forest/{collarName}")
+@app.get("/ml/random_forest/{collarName}")
 async def get_predictions_random_forest(collarName: str):
     df = get_data_last_2_days_for_collar_name(collarName)
 #    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
@@ -150,7 +150,7 @@ async def get_predictions_random_forest(collarName: str):
     return status
 
 #decision tree
-@app.get("ml/decision_tree/{collarName}")
+@app.get("/ml/decision_tree/{collarName}")
 async def get_predictions_random_forest(collarName: str):
     df = get_data_last_2_days_for_collar_name(collarName)
 #    column_names = ['collarName', 'temp', 'hbr', 'timestamp', 'health_status'] assume data columns are ordered like this
